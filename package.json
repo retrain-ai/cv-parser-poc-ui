@@ -1,6 +1,6 @@
 {
   "name": "cv-parser",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,10 +10,14 @@
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.0.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@radix-ui/react-slot": "^1.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
     "lucide-react": "^0.424.0",
     "next": "14.2.5",
+    "openai": "^4.55.4",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.4.0",
