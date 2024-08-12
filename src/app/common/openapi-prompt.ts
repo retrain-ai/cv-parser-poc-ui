@@ -1,5 +1,4 @@
-import OpenAI from "openai";
-import { defaultPrompt } from "../../../common/openapi-prompt";
+import { ChatCompletionCreateParamsNonStreaming } from "openai/resources/index.mjs";
 
 function schema() {
   return {
@@ -76,15 +75,25 @@ function schema() {
   };
 }
 
-const client = new OpenAI();
-export function parseCv(content: string, prompt = defaultPrompt()) {
-  const newPrompt = {
-    ...prompt,
+export function defaultPrompt(): ChatCompletionCreateParamsNonStreaming {
+  return {
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an asistant that helps parse resumes. Take the following resume and parse it into a json object accroding to the schema. Extract user skills, both that appear explicitly, and implicitly. Extract personal data, work experience, and education.",
+      },
+    ],
+    model: "gpt-4o-2024-08-06",
+    response_format: {
+      json_schema: {
+        name: "Resume",
+        description:
+          "This json is meant to be an accurate description of a person's resume",
+        schema: schema(),
+        strict: false,
+      },
+      type: "json_schema",
+    },
   };
-  newPrompt.messages.push({
-    role: "user",
-    content: content,
-  });
-
-  return client.chat.completions.create(newPrompt);
 }

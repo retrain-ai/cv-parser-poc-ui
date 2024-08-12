@@ -24,6 +24,10 @@ const key = process.env.DOCUMENT_AI_KEY!;
 
 export async function analyze(formData: FormData) {
   const file = formData.get("file") as File;
+  const prompt = formData.get("prompt") as string;
+  console.log("Prompt", typeof prompt, prompt);
+  const promptObject = prompt ? JSON.parse(prompt) : undefined;
+  console.log("Prompt", typeof promptObject, promptObject);
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
   // create your `DocumentAnalysisClient` instance and `AzureKeyCredential` variable
@@ -37,7 +41,7 @@ export async function analyze(formData: FormData) {
     await poller.pollUntilDone();
 
   // return { languages, paragraphs };
-  const response = await parseCv(content);
+  const response = await parseCv(content, promptObject);
   return {
     parsed: response.choices[0].message.content,
     rawCv: content,

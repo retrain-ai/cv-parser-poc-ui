@@ -18,31 +18,77 @@ To read more about using these font, please visit the Next.js documentation:
 - App Directory: https://nextjs.org/docs/app/building-your-application/optimizing/fonts
 - Pages Directory: https://nextjs.org/docs/pages/building-your-application/optimizing/fonts
 **/
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import FileInput from "./FileUpload/FileUpload";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useState } from "react";
 import { analyze } from "../app/api/analyze/document-analyze";
 import { CVPreview } from "./CvPreview/CvPreview";
+import FileInput from "./FileUpload/FileUpload";
+import { ResetButton, SettingsButton } from "./icons";
 import { JsonViewer } from "./JsonPreview/JsonPreview";
+import { PromptEditor } from "./PromptEditor/PromptEditor";
 import { Spinner } from "./Spinner/Spinner";
+import { defaultPrompt } from "../app/common/openapi-prompt";
+
+function safeParse(v: string | undefined) {
+  if (!v) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(v);
+  } catch (e) {
+    return undefined;
+  }
+}
 
 export function Parser() {
   const [file, setFile] = useState<File | null>(null);
   const [parsedCv, setParsed] = useState<object | null>(null);
   const [loading, setLoading] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [prompt, setPrompt] = useState(JSON.stringify(defaultPrompt()));
+  const [validPrompt, setValidPrompt] = useState(true);
 
-  const onClick = async () => {
+  const onSetPrompt = (v: string | undefined) => {
+    setPrompt(v || "");
+    try {
+      JSON.parse(v!);
+      setValidPrompt(true);
+    } catch (e) {
+      setValidPrompt(false);
+    }
+  };
+
+  const onResetPrompt = () => {
+    setPrompt(JSON.stringify(defaultPrompt()));
+    setValidPrompt(true);
+    setSettingsOpen(false);
+    setTimeout(() => {
+      setSettingsOpen(true);
+    });
+  };
+
+  const onClickSettings = () => {
+    setSettingsOpen(!settingsOpen);
+  };
+
+  const onParse = async () => {
+    setSettingsOpen(false);
     if (file) {
       const formData = new FormData();
       formData.append("file", file, file.name);
+      formData.append("prompt", prompt);
       setLoading(true);
       try {
         const r = await analyze(formData);
         setLoading(false);
         r.parsed = JSON.parse(r.parsed || "{}");
         setParsed(r);
-        console.log(r);
       } catch (e) {
         setLoading(false);
         console.error(e);
@@ -50,36 +96,78 @@ export function Parser() {
       }
     }
   };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-fit mx-auto p-4 md:p-6 xl:px-36">
-      <div className="grid grid-rows-[30%_70%] gap-6 h-screen">
-        <div className="bg-muted rounded-lg p-4 md:p-6 flex flex-col justify-center">
-          <h2 className="text-2xl font-bold mb-4">Upload PDF</h2>
-          <div className="flex gap-2">
-            <FileInput onFileSelect={setFile} />
-            {/* <Input type="file" /> */}
-            <Button onClick={onClick} disabled={loading}>
-              Parse!
-            </Button>
+    <TooltipProvider>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-fit mx-auto p-4 md:p-6 xl:px-36">
+        <div className="grid grid-rows-[30%_70%] gap-6 h-screen">
+          <div className="bg-muted rounded-lg p-4 md:p-6 flex flex-col justify-center">
+            <h2 className="text-2xl font-bold mb-4">Upload PDF</h2>
+            <div className="flex gap-2">
+              <FileInput onFileSelect={setFile} />
+              {/* <Input type="file" /> */}
+              <Button onClick={onParse} disabled={loading || !validPrompt}>
+                Parse!
+              </Button>
+            </div>
+          </div>
+          <div className="bg-muted rounded-lg p-4 md:p-6 overflow-auto flex flex-col">
+            <div className="flex justify-between mb-4 h-8">
+              <h2 className="text-2xl font-bold flex-grow">
+                {settingsOpen ? "Set Prompt" : "JSON Response"}
+              </h2>
+              <div className="flex space-x-4 h-8">
+                {settingsOpen ? (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <ResetButton onClick={onResetPrompt} />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Reset prompt</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+                <Tooltip>
+                  <TooltipTrigger>
+                    <SettingsButton
+                      onClick={onClickSettings}
+                      active={settingsOpen}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Open Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+            {!settingsOpen ? (
+              <div className="justify-center items-center justify-items-center flex flex-grow">
+                {<Spinner loading={loading} />}
+                {!loading && parsedCv ? (
+                  <JsonViewer data={parsedCv}></JsonViewer>
+                ) : (
+                  <></>
+                )}
+              </div>
+            ) : null}
+            {settingsOpen ? (
+              <div className="justify-center items-center justify-items-center flex flex-grow">
+                {
+                  <PromptEditor
+                    data={prompt}
+                    onChange={onSetPrompt}
+                  ></PromptEditor>
+                }
+              </div>
+            ) : null}
           </div>
         </div>
-        <div className="bg-muted rounded-lg p-4 md:p-6 overflow-auto flex flex-col">
-          <h2 className="text-2xl font-bold mb-4">JSON Response</h2>
-          <div className="justify-center items-center justify-items-center flex flex-grow">
-            {<Spinner loading={loading} />}
-            {!loading && parsedCv ? (
-              <JsonViewer data={parsedCv}></JsonViewer>
-            ) : (
-              <></>
-            )}
+        <div className="bg-muted rounded-lg overflow-hidden">
+          <div className="p-4 md:p-6 h-full">
+            <CVPreview file={file || undefined} />
           </div>
         </div>
       </div>
-      <div className="bg-muted rounded-lg overflow-hidden">
-        <div className="p-4 md:p-6 h-full">
-          <CVPreview file={file || undefined} />
-        </div>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }
